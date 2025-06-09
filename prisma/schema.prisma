@@ -1,0 +1,94 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  age       Int?
+  bio       String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Preferencias principales
+  budget         Int?     // Presupuesto máximo mensual
+  vegetarian     Boolean  @default(false)
+  hasPets        Boolean  @default(false)
+  allowsPets     Boolean  @default(false)
+  smoker         Boolean  @default(false)
+  allowsSmoking  Boolean  @default(false)
+  
+  // Estilo de vida (escala 1-5)
+  cleanliness    Int?     // Qué tan limpio/a es
+  socialLevel    Int?     // Qué tan social es (1=introvertido, 5=muy social)
+  noiseLevel     Int?     // Tolerancia al ruido (1=silencio, 5=ruido OK)
+  scheduleType   String?  // "morning" | "night" | "flexible"
+  
+  // Preferencias de búsqueda
+  genderPreference String? // "male" | "female" | "any"
+  ageMin         Int?
+  ageMax         Int?
+  
+  // Relaciones
+  accounts       Account[]
+  sessions       Session[]
+  sentMatches    Match[]   @relation("MatchSender")
+  receivedMatches Match[]  @relation("MatchReceiver")
+  
+  @@map("users")
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  status    String   @default("pending") // "pending", "accepted", "rejected"
+  score     Float?   // Puntuación de compatibilidad (0-100)
+  createdAt DateTime @default(now())
+  
+  // Relaciones
+  senderId   String
+  sender     User @relation("MatchSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User @relation("MatchReceiver", fields: [receiverId], references: [id])
+  
+  @@unique([senderId, receiverId])
+  @@map("matches")
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
